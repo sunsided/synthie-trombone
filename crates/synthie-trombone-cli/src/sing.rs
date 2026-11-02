@@ -176,7 +176,7 @@ pub fn run(args: &SingArgs) -> Result<()> {
         ..SingOptions::default()
     };
     let utterance = sing::compile(&notes, &settings, &options);
-    let out = render(utterance, &settings, args.rate, args.room);
+    let out = render(utterance, &settings, args.rate, args.room)?;
     write_wav(&args.output, args.rate, &out)?;
     println!(
         "sang {} notes from track {index} ({:.1} s) into {}",
@@ -187,18 +187,36 @@ pub fn run(args: &SingArgs) -> Result<()> {
     Ok(())
 }
 
+/// Longest render accepted, in seconds.
+const MAX_SECONDS: f64 = 3600.0;
+
 /// Sing `utterance` through a short room, normalised to -1 dBFS.
 #[allow(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
     clippy::cast_precision_loss
 )]
-fn render(utterance: Utterance, settings: &VoiceSettings, rate: u32, room: f32) -> Vec<f32> {
+fn render(
+    utterance: Utterance,
+    settings: &VoiceSettings,
+    rate: u32,
+    room: f32,
+) -> Result<Vec<f32>> {
+    // Check the length before allocating: a hostile or broken MIDI file
+    // could otherwise ask for an enormous buffer.
+    let seconds = f64::from(utterance.duration()) + 0.6;
+    if !seconds.is_finite() || seconds > MAX_SECONDS {
+        bail!(
+            "the song would be {seconds:.0} s long; the limit is {MAX_SECONDS:.0} s \
+             (narrow it with --from/--until)"
+        );
+    }
+    let samples = (seconds * f64::from(rate)).ceil() as usize;
     let sr = rate as f32;
     let mut voice = Trombone::new(sr);
     Speaker::prepare(&mut voice);
     settings.apply(&mut voice);
-    let mut out = vec![0.0f32; ((utterance.duration() + 0.6) * sr) as usize];
+    let mut out = vec![0.0f32; samples];
     let mut speaker = Speaker::new();
     speaker.speak(utterance);
     let mut reverb = Reverb::new();
@@ -207,7 +225,7 @@ fn render(utterance: Utterance, settings: &VoiceSettings, rate: u32, room: f32) 
         *s = reverb.process(speaker.process(&mut voice), room.clamp(0.0, 1.0));
     }
     normalize(&mut out, 0.89);
-    out
+    Ok(out)
 }
 
 /// 16-bit PCM mono WAV.

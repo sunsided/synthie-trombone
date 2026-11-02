@@ -154,9 +154,15 @@ enum Raw {
     },
 }
 
+/// Decode MIDI text. It is nominally ASCII, with Latin-1 the common practice
+/// beyond it. Control characters (C0, DEL, C1) are dropped, so text from an
+/// untrusted file cannot carry terminal escape sequences.
 fn text(bytes: &[u8]) -> String {
-    // MIDI text is nominally ASCII; Latin-1 is the common practice beyond it.
-    bytes.iter().map(|&b| char::from(b)).collect()
+    bytes
+        .iter()
+        .map(|&b| char::from(b))
+        .filter(|c| !c.is_control())
+        .collect()
 }
 
 /// Parse a Standard MIDI File.
@@ -440,6 +446,17 @@ pub(crate) mod tests {
         assert_eq!(t.lyrics.len(), 2);
         assert_eq!(t.lyrics[1].text, "lu");
         assert!((t.lyrics[1].time - 0.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn strips_control_characters_from_text() {
+        let mut name = vec![0xff, 0x03, 0x07];
+        name.extend(b"\x1b[2JVox");
+        let mut syl = vec![0xff, 0x05, 0x03];
+        syl.extend([b'L', 0x9b, b'a']);
+        let f = parse(&smf(&[vec![(0, name), (0, syl)]])).unwrap();
+        assert_eq!(f.tracks[0].name.as_deref(), Some("[2JVox"));
+        assert_eq!(f.tracks[0].lyrics[0].text, "La");
     }
 
     #[test]
