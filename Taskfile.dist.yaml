@@ -51,7 +51,7 @@ tasks:
     desc: Run all checks — format, lint, compile (std and no_std)
     cmds:
       - cargo fmt --all -- --check
-      - cargo clippy --workspace --all-targets -- -D warnings
+      - cargo clippy --workspace --all-targets --all-features -- -D warnings
       - cargo check --workspace
       - task: check:no-std
 
@@ -60,6 +60,15 @@ tasks:
     cmds:
       - cargo check -p synthie-trombone --no-default-features --features libm
       - cargo check -p synthie-trombone --no-default-features --features libm,alloc
+
+  lint:actions:
+    desc: Lint GitHub Actions workflows (actionlint + zizmor), same versions as CI
+    preconditions:
+      - sh: command -v uvx
+        msg: "uvx not found — install uv from https://docs.astral.sh/uv/"
+    cmds:
+      - uvx --from actionlint-py==1.7.12.25 actionlint
+      - uvx zizmor==1.31.1 {{.CLI_ARGS}} .
 
   gc:
     desc: Clean up outdated build artifacts

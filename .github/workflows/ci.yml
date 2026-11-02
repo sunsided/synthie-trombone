@@ -1,0 +1,110 @@
+name: CI
+
+# Formatting and Clippy (warnings are errors) gate every push and pull
+# request; tests, docs, the no_std and wasm32 builds and the MSRV check run
+# alongside. release.yml calls this workflow first, so a tag only ships after
+# all of it passes.
+on:
+  push:
+    branches:
+      - main
+      - 'release/*'
+  pull_request:
+    branches:
+      - main
+      - 'release/*'
+      - 'feature/*'
+  workflow_call:
+
+concurrency:
+  # A fixed name: when called, github.workflow would be the caller's and the
+  # group would collide with release.yml's own.
+  group: ci-${{ github.ref }}
+  # Superseded branch runs can go; runs called from a release must finish.
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: stable
+          components: rustfmt
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+  clippy:
+    name: Clippy and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # cpal (the CLI's audio output) links ALSA on Linux.
+      - name: Install ALSA development libraries
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: stable
+          components: clippy
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          # Only main writes the cache; other refs only restore it. Nothing in
+          # this workflow publishes artifacts built from the cache.
+          save-if: ${{ github.ref == 'refs/heads/main' }} # zizmor: ignore[cache-poisoning]
+
+      - name: Clippy (all targets, all features)
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+      - name: Tests
+        run: cargo test --workspace --all-features --locked
+
+      - name: Clippy, no_std (libm)
+        run: cargo clippy -p synthie-trombone --no-default-features --features libm --locked -- -D warnings
+
+      - name: Clippy, no_std with alloc (libm + speech)
+        run: cargo clippy -p synthie-trombone --no-default-features --features libm,alloc,serde --locked -- -D warnings
+
+      - name: Clippy, wasm32 (game-toolkit's web target)
+        run: cargo clippy -p synthie-trombone --target wasm32-unknown-unknown --all-features --locked -- -D warnings
+
+      - name: Docs (warnings are errors)
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc -p synthie-trombone --no-deps --all-features --locked
+
+  msrv:
+    name: MSRV (synthie-trombone)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Keep in sync with `rust-version` in crates/synthie-trombone/Cargo.toml.
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: '1.88'
+
+      - name: Check the library on its MSRV
+        run: cargo check -p synthie-trombone --all-features --locked
