@@ -1,9 +1,10 @@
 name: Release
 
-# Push a version tag (v0.1.0, or v0.1.0-rc.1 for a prerelease) to build the
-# `synthie-trombone` terminal app for Linux, macOS and Windows and create a
-# GitHub release with generated notes and the archives attached. The tag must
-# match the workspace version in Cargo.toml.
+# Push a version tag (v0.1.0, or v0.1.0-rc.1 for a prerelease; `cargo release`
+# does it, see release.toml) to build the `synthie-trombone` terminal app for
+# Linux, macOS and Windows and create a GitHub release that links the library
+# on crates.io and docs.rs, with generated notes and the archives attached.
+# The tag must match the workspace version in Cargo.toml.
 #
 # Publishing the library to crates.io uses trusted publishing and stays off
 # until the repository variable PUBLISH_CRATES is "true": the first release of
@@ -144,7 +145,17 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: |
-          flags=(--verify-tag --generate-notes --title "${TAG#v}")
+          version="${TAG#v}"
+          # Point at the library on crates.io and docs.rs; GitHub's generated
+          # notes (merged pull requests) follow below.
+          notes="The \`synthie-trombone\` library is on [crates.io](https://crates.io/crates/synthie-trombone/${version}) ([docs](https://docs.rs/synthie-trombone/${version})):
+
+          \`\`\`toml
+          synthie-trombone = \"${version}\"
+          \`\`\`
+
+          The archives below contain the \`synthie-trombone\` terminal app for Linux, macOS and Windows."
+          flags=(--verify-tag --generate-notes --notes "$notes" --title "$version")
           # A suffix like -rc.1 marks a prerelease.
           if [[ "$TAG" == *-* ]]; then flags+=(--prerelease); fi
           gh release create "$TAG" "${flags[@]}" dist/*

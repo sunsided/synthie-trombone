@@ -1,0 +1,35 @@
+# Config for `cargo release` (https://github.com/crate-ci/cargo-release).
+#
+# One command bumps the workspace version, commits, tags `vX.Y.Z` and pushes;
+# the tag then triggers .github/workflows/release.yml, which runs CI, builds
+# the terminal app for Linux, macOS and Windows and creates the GitHub
+# release.
+#
+# Install once:  cargo install cargo-release --locked
+#
+# Publishing the library to crates.io, pick one (not both, or you
+# double-publish):
+#
+#   Local (needs `cargo login` or CARGO_REGISTRY_TOKEN):
+#     cargo release 0.2.0 --execute              # bump + commit + tag + push + publish
+#
+#   CI (trusted publishing; set the repository variable PUBLISH_CRATES=true
+#   and add this workflow as a trusted publisher on crates.io first):
+#     cargo release 0.2.0 --execute --no-publish # bump + commit + tag + push
+#
+# Drop --execute for a dry run. Without a version or level (patch, minor,
+# major), cargo-release releases the current version as is.
+
+# Both crates share [workspace.package] version; move them in lockstep.
+shared-version = true
+
+# One commit and one tag for the whole workspace, not one per crate.
+consolidate-commits = true
+tag-name = "v{{version}}"
+pre-release-commit-message = "Release {{version}}"
+
+# Only release from main.
+allow-branch = ["main"]
+
+# synthie-trombone-cli carries `publish = false` (synthie-ui is a git
+# dependency), so only the library is published.
