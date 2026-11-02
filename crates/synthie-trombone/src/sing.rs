@@ -60,11 +60,35 @@ impl Default for SingOptions {
 #[must_use]
 #[allow(clippy::cast_possible_truncation)]
 pub fn melody(track: &Track) -> Vec<SungNote> {
+    melody_with(track, &MelodyOptions::default())
+}
+
+/// How to pull a melody out of a track that also holds accompaniment.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct MelodyOptions {
+    /// Ignore notes below this MIDI key (accompaniment usually sits lower).
+    pub min_key: Option<u8>,
+}
+
+/// [`melody`] with options. The melody is the "skyline": of notes starting
+/// together the highest wins, and a note that starts underneath a higher
+/// note still sounding is accompaniment, not melody.
+#[must_use]
+#[allow(clippy::cast_possible_truncation)]
+pub fn melody_with(track: &Track, options: &MelodyOptions) -> Vec<SungNote> {
     let mut notes: Vec<SungNote> = Vec::new();
     for n in &track.notes {
+        if options.min_key.is_some_and(|k| n.key < k) {
+            continue;
+        }
         if let Some(last) = notes.last_mut() {
             if (n.start - last.start).abs() < 1e-4 {
                 // Same onset: keep the higher note (the melody in a chord).
+                continue;
+            }
+            let still_sounding = n.start < last.start + last.duration - 1e-4;
+            if still_sounding && f32::from(n.key) < last.key {
+                // Starts under a higher, held note: accompaniment.
                 continue;
             }
             // Monophonic: a new note ends the previous one.
@@ -106,6 +130,69 @@ pub fn melody(track: &Track) -> Vec<SungNote> {
     notes
 }
 
+/// Sing a lyrics text line by line, one line per phrase of `notes`.
+///
+/// Each line takes notes from where its phrase starts, one syllable per
+/// note; the notes after its last syllable stay silent until the next line.
+/// A line starts at the first note after a gap of at least `gap` seconds
+/// following the previous line, or, if it begins with `@<seconds>`, at the
+/// first note from that time on. Within a line, `*` skips a note (it stays
+/// silent) and `_` holds the previous vowel over one more note; words split
+/// as in [`split_syllables`].
+///
+/// Returns only the notes that are sung.
+#[must_use]
+pub fn align_lines(notes: &[SungNote], lyrics: &str, gap: f64) -> Vec<SungNote> {
+    let mut out = Vec::new();
+    // Index of the next unused note, and the end of the last sung one.
+    let mut next = 0usize;
+    let mut last_end: Option<f64> = None;
+    for line in lyrics.lines() {
+        let mut line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let mut anchor = None;
+        if let Some(rest) = line.strip_prefix('@') {
+            let (time, words) = rest.split_once(char::is_whitespace).unwrap_or((rest, ""));
+            anchor = time.parse::<f64>().ok();
+            line = words.trim();
+        }
+        // Where this phrase starts.
+        let start = if let Some(t) = anchor {
+            notes.iter().position(|n| n.start >= t - 0.05)
+        } else if let Some(end) = last_end {
+            (next..notes.len()).find(|&j| {
+                let prev_end = if j == 0 {
+                    end
+                } else {
+                    (notes[j - 1].start + notes[j - 1].duration).max(end)
+                };
+                notes[j].start - prev_end >= gap
+                    || (j > 0
+                        && notes[j].start - (notes[j - 1].start + notes[j - 1].duration) >= gap)
+            })
+        } else {
+            Some(next)
+        };
+        let Some(mut j) = start else { break };
+        for syllable in split_syllables(line) {
+            let Some(note) = notes.get(j) else { break };
+            j += 1;
+            if syllable.trim() == "*" {
+                continue;
+            }
+            last_end = Some(note.start + note.duration);
+            out.push(SungNote {
+                syllable: Some(syllable),
+                ..note.clone()
+            });
+        }
+        next = j;
+    }
+    out
+}
+
 /// Put `syllables` on the notes in order, one per note; extra notes become
 /// melisma, extra syllables are dropped.
 #[must_use]
@@ -124,8 +211,8 @@ pub fn with_syllables(mut notes: Vec<SungNote>, syllables: &[String]) -> Vec<Sun
 pub fn split_syllables(text: &str) -> Vec<String> {
     let mut out = Vec::new();
     for word in text.split_whitespace() {
-        if word == "_" {
-            out.push(String::from("_"));
+        if word == "_" || word == "*" {
+            out.push(String::from(word));
             continue;
         }
         let split;
@@ -698,6 +785,77 @@ mod tests {
             pitches.windows(2).any(|w| w[1] > w[0] + 10.0),
             "{pitches:?}"
         );
+    }
+
+    #[test]
+    fn lines_follow_phrases_and_skip_the_fills() {
+        // Phrase one: 3 notes; a piano fill of 2 notes right after it;
+        // a rest; phrase two: 2 notes.
+        let notes: Vec<SungNote> = [
+            (0.0, 60.0),
+            (0.3, 62.0),
+            (0.6, 64.0),
+            (0.9, 67.0),
+            (1.2, 65.0),
+            (2.0, 64.0),
+            (2.3, 62.0),
+        ]
+        .iter()
+        .map(|&(t, k)| note(t, 0.3, k, ""))
+        .collect();
+        let sung = align_lines(&notes, "one two three\nfour five\n", 0.3);
+        let starts: Vec<f64> = sung.iter().map(|n| n.start).collect();
+        assert_eq!(
+            starts,
+            vec![0.0, 0.3, 0.6, 2.0, 2.3],
+            "the fill stays silent"
+        );
+
+        // `@` anchors a line; `*` skips a note.
+        let sung = align_lines(&notes, "one * three\n@2.3 five\n", 0.3);
+        let starts: Vec<f64> = sung.iter().map(|n| n.start).collect();
+        assert_eq!(starts, vec![0.0, 0.6, 2.3]);
+    }
+
+    #[test]
+    fn skyline_drops_notes_under_a_held_melody_note() {
+        let track = Track {
+            notes: vec![
+                midi::Note {
+                    start: 0.0,
+                    duration: 1.0,
+                    key: 72,
+                    velocity: 90,
+                    channel: 0,
+                },
+                midi::Note {
+                    start: 0.25,
+                    duration: 0.25,
+                    key: 60,
+                    velocity: 90,
+                    channel: 0,
+                },
+                midi::Note {
+                    start: 0.5,
+                    duration: 0.25,
+                    key: 64,
+                    velocity: 90,
+                    channel: 0,
+                },
+                midi::Note {
+                    start: 1.0,
+                    duration: 0.5,
+                    key: 71,
+                    velocity: 90,
+                    channel: 0,
+                },
+            ],
+            ..Track::default()
+        };
+        let keys: Vec<f32> = melody(&track).iter().map(|n| n.key).collect();
+        assert_eq!(keys, vec![72.0, 71.0]);
+        let floor = melody_with(&track, &MelodyOptions { min_key: Some(71) });
+        assert_eq!(floor.len(), 2);
     }
 
     #[test]

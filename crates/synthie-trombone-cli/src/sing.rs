@@ -64,6 +64,19 @@ pub struct SingArgs {
     /// Print the syllables as they map onto notes.
     #[arg(long)]
     pub verbose: bool,
+    /// Print the melody notes (numbered, with gaps) in the range and exit;
+    /// use it to place `@<seconds>` anchors and `*` skips in the lyrics.
+    #[arg(long)]
+    pub notes: bool,
+    /// Ignore notes below this MIDI key when finding the melody.
+    #[arg(long)]
+    pub min_key: Option<u8>,
+    /// Silence in seconds that ends a phrase when lining up lyrics lines.
+    #[arg(long, default_value_t = 0.3)]
+    pub gap: f64,
+    /// Also write the sung notes, with their syllables, as a new MIDI file.
+    #[arg(long)]
+    pub export: Option<PathBuf>,
 }
 
 fn list(file: &MidiFile) {
@@ -114,22 +127,20 @@ pub fn run(args: &SingArgs) -> Result<()> {
             .context("the file has no notes")?,
     };
 
-    let mut notes = sing::melody(&file.tracks[index]);
+    let melody_options = sing::MelodyOptions {
+        min_key: args.min_key,
+    };
+    let mut notes = sing::melody_with(&file.tracks[index], &melody_options);
+    notes.retain(|n| n.start + 1e-6 >= args.from && args.until.is_none_or(|u| n.start < u));
+    if args.notes {
+        print_notes(&notes);
+        return Ok(());
+    }
     if let Some(path) = &args.lyrics {
         let text =
             std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
-        let first = notes
-            .iter()
-            .position(|n| n.start + 1e-6 >= args.from)
-            .unwrap_or(notes.len());
-        let syllables = sing::split_syllables(&text);
-        let mut tail = sing::with_syllables(notes.split_off(first), &syllables);
-        for n in &mut notes {
-            n.syllable = None;
-        }
-        notes.append(&mut tail);
+        notes = sing::align_lines(&notes, &text, args.gap);
     }
-    notes.retain(|n| n.start + 1e-6 >= args.from && args.until.is_none_or(|u| n.start < u));
     if notes.is_empty() {
         bail!(
             "no notes between {}s and {:?}s on track {index}",
@@ -175,6 +186,9 @@ pub fn run(args: &SingArgs) -> Result<()> {
         portamento: args.portamento,
         ..SingOptions::default()
     };
+    if let Some(path) = &args.export {
+        export(path, &notes)?;
+    }
     let utterance = sing::compile(&notes, &settings, &options);
     let out = render(utterance, &settings, args.rate, args.room)?;
     write_wav(&args.output, args.rate, &out)?;
@@ -184,6 +198,65 @@ pub fn run(args: &SingArgs) -> Result<()> {
         out.len() as f32 / args.rate as f32,
         args.output.display()
     );
+    Ok(())
+}
+
+const NAMES: [&str; 12] = [
+    "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
+];
+
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn note_name(key: f32) -> String {
+    let k = key.round() as i32;
+    format!(
+        "{}{}",
+        NAMES[k.rem_euclid(12) as usize],
+        k.div_euclid(12) - 1
+    )
+}
+
+/// The melody as a numbered list: time, length, pitch, and the silence
+/// before each note (phrases start after the longer ones).
+fn print_notes(notes: &[sing::SungNote]) {
+    println!("    #    start  length  key   gap");
+    let mut prev_end: Option<f64> = None;
+    for (i, n) in notes.iter().enumerate() {
+        let gap = prev_end.map_or(String::new(), |e| {
+            let g = n.start - e;
+            if g > 0.005 {
+                format!("{g:5.2}s")
+            } else {
+                String::new()
+            }
+        });
+        println!(
+            "{i:>5}  {:>6.2}s  {:>5.2}s  {:<4}  {gap}",
+            n.start,
+            n.duration,
+            note_name(n.key)
+        );
+        prev_end = Some(n.start + n.duration);
+    }
+}
+
+/// Write the sung notes, starting at zero, as a small MIDI file with lyrics.
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn export(path: &PathBuf, notes: &[sing::SungNote]) -> Result<()> {
+    let t0 = notes.first().map_or(0.0, |n| n.start);
+    let rows: Vec<(f64, f64, u8, Option<&str>)> = notes
+        .iter()
+        .map(|n| {
+            (
+                n.start - t0,
+                n.duration,
+                n.key.round().clamp(0.0, 127.0) as u8,
+                n.syllable.as_deref(),
+            )
+        })
+        .collect();
+    std::fs::write(path, midi::write(&rows))
+        .with_context(|| format!("writing {}", path.display()))?;
+    println!("wrote {} sung notes to {}", rows.len(), path.display());
     Ok(())
 }
 

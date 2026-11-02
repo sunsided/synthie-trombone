@@ -356,6 +356,73 @@ pub fn parse(data: &[u8]) -> Result<MidiFile, MidiError> {
     Ok(file)
 }
 
+/// Write a single-track MIDI file (format 0, 120 bpm) with `notes` given
+/// as `(start seconds, duration seconds, key, lyric)`. Lyrics become lyric
+/// meta events on their notes.
+#[must_use]
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+pub fn write(notes: &[(f64, f64, u8, Option<&str>)]) -> Vec<u8> {
+    // 480 ticks per quarter at 120 bpm: 960 ticks per second.
+    const TICKS_PER_SECOND: f64 = 960.0;
+    let tick = |s: f64| (s.max(0.0) * TICKS_PER_SECOND).round() as u32;
+    // (tick, order, bytes): note-offs before note-ons at the same tick.
+    let mut events: Vec<(u32, u8, Vec<u8>)> = Vec::new();
+    for &(start, duration, key, lyric) in notes {
+        let on = tick(start);
+        let off = tick(start + duration).max(on + 1);
+        if let Some(text) = lyric {
+            let mut e = alloc::vec![0xff, 0x05];
+            let bytes: Vec<u8> = text
+                .chars()
+                .map(|c| u8::try_from(c).unwrap_or(b'?'))
+                .collect();
+            push_vlq(bytes.len() as u32, &mut e);
+            e.extend(bytes);
+            events.push((on, 1, e));
+        }
+        events.push((on, 2, alloc::vec![0x90, key & 0x7f, 96]));
+        events.push((off, 0, alloc::vec![0x80, key & 0x7f, 0]));
+    }
+    events.sort_by_key(|e| (e.0, e.1));
+
+    let mut body = Vec::new();
+    // Tempo: 500000 us per quarter (120 bpm).
+    body.extend([0x00, 0xff, 0x51, 0x03, 0x07, 0xa1, 0x20]);
+    let mut now = 0u32;
+    for (t, _, bytes) in events {
+        push_vlq(t - now, &mut body);
+        body.extend(bytes);
+        now = t;
+    }
+    body.extend([0x00, 0xff, 0x2f, 0x00]);
+
+    let mut out = b"MThd".to_vec();
+    out.extend(6u32.to_be_bytes());
+    out.extend(0u16.to_be_bytes());
+    out.extend(1u16.to_be_bytes());
+    out.extend(480u16.to_be_bytes());
+    out.extend(b"MTrk");
+    out.extend((body.len() as u32).to_be_bytes());
+    out.extend(body);
+    out
+}
+
+fn push_vlq(mut v: u32, out: &mut Vec<u8>) {
+    let mut bytes = [0u8; 5];
+    let mut n = 0;
+    loop {
+        bytes[n] = (v & 0x7f) as u8;
+        n += 1;
+        v >>= 7;
+        if v == 0 {
+            break;
+        }
+    }
+    for k in (0..n).rev() {
+        out.push(bytes[k] | if k > 0 { 0x80 } else { 0 });
+    }
+}
+
 impl Track {
     /// The track's sung text: lyric events if there are any, otherwise text
     /// events that look like karaoke lyrics (not `@` header fields).
@@ -457,6 +524,24 @@ pub(crate) mod tests {
         let f = parse(&smf(&[vec![(0, name), (0, syl)]])).unwrap();
         assert_eq!(f.tracks[0].name.as_deref(), Some("[2JVox"));
         assert_eq!(f.tracks[0].lyrics[0].text, "La");
+    }
+
+    #[test]
+    fn written_files_read_back() {
+        let bytes = write(&[
+            (0.0, 0.5, 60, Some("Sing ")),
+            (0.5, 1.0, 64, None),
+            (2.0, 0.25, 67, Some("la ")),
+        ]);
+        let f = parse(&bytes).unwrap();
+        let t = &f.tracks[0];
+        assert_eq!(t.notes.len(), 3);
+        assert!(
+            (t.notes[1].start - 0.5).abs() < 0.002 && (t.notes[1].duration - 1.0).abs() < 0.002
+        );
+        assert!((t.notes[2].start - 2.0).abs() < 0.002);
+        assert_eq!(t.lyrics.len(), 2);
+        assert_eq!(t.lyrics[1].text, "la ");
     }
 
     #[test]
