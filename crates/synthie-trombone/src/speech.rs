@@ -118,6 +118,12 @@ impl Utterance {
         Self::from_tokens(&phonemize(text), prosody)
     }
 
+    /// An utterance from hand-made segments (see [`crate::sing`]).
+    #[must_use]
+    pub fn from_segments(segments: Vec<Segment>) -> Self {
+        Self { segments }
+    }
+
     /// Compile a token stream (see [`phonemize`]).
     #[must_use]
     pub fn from_tokens(tokens: &[Token], prosody: &Prosody) -> Self {

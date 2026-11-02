@@ -2,3 +2,10 @@ target/
 *.wav
 .task/
 voices/
+
+# Local singing material (sing): lyrics, MIDI, renders
+*.lyr
+*.mid
+*.midi
+*.kar
+*.wav

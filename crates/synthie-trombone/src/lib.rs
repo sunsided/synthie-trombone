@@ -62,9 +62,13 @@ extern crate alloc;
 
 mod glottis;
 mod math;
+#[cfg(feature = "alloc")]
+pub mod midi;
 mod noise;
 mod phoneme;
 mod preset;
+#[cfg(feature = "alloc")]
+pub mod sing;
 #[cfg(feature = "alloc")]
 pub mod speech;
 #[cfg(feature = "alloc")]

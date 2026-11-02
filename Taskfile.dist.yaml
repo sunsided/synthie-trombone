@@ -231,3 +231,13 @@ tasks:
     dir: web
     cmds:
       - yarn build
+
+  triumph:
+    desc: 'Sing triumph/triumph.mid with triumph/triumph.lyr (local files, not in the repo; extra options after --, e.g. task triumph -- --until 30)'
+    aliases: [sing]
+    preconditions:
+      - sh: test -f triumph/triumph.mid && test -f triumph/triumph.lyr
+        msg: "put triumph.mid and triumph.lyr into triumph/ first"
+    cmds:
+      - cargo build --release -p synthie-trombone-cli
+      - target/release/synthie-trombone sing triumph/triumph.mid --lyrics triumph/triumph.lyr {{.CLI_ARGS}}
