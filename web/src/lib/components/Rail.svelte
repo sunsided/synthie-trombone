@@ -27,14 +27,19 @@
 		'Shiny! Mine, all mine!'
 	];
 
-	/** Sounds to shape the tract with: label, ARPAbet symbol. */
-	const SOUNDS: [string, string][] = [
+	/**
+	 * Sounds to shape the tract with: label and ARPAbet symbols. With two
+	 * symbols the shape glides from the first to the second ("eye").
+	 */
+	const SOUNDS: [string, ...string[]][] = [
 		['ee', 'IY'],
 		['ih', 'IH'],
 		['eh', 'EH'],
 		['a', 'AE'],
 		['ah', 'AA'],
+		['eye', 'AA', 'IY'],
 		['aw', 'AO'],
+		['oh', 'OW'],
 		['oo', 'UW'],
 		['er', 'ER'],
 		['m', 'M'],
@@ -48,23 +53,29 @@
 	];
 
 	let text = $state('');
-	/** The sound shown as selected, picked by hand or by the cycle. */
+	/** Label of the sound shown as selected, picked by hand or by the cycle. */
 	let current = $state<string | null>(null);
+	let glide: ReturnType<typeof setTimeout> | undefined;
 
-	function shape(symbol: string) {
-		current = symbol;
-		voice.articulate(symbol);
+	function shape([label, first, ...rest]: [string, ...string[]]) {
+		current = label;
+		clearTimeout(glide);
+		voice.articulate(first);
+		// Diphthongs: move on to the next target after a short hold.
+		rest.forEach((symbol, k) => {
+			glide = setTimeout(() => voice.articulate(symbol), 220 * (k + 1));
+		});
 	}
 
 	// Round and round through the sounds while nobody touches anything.
 	$effect(() => {
 		if (!cycling || !voice.awake) return;
 		// Start from the selected sound; untracked so stepping doesn't restart the timer.
-		let k = untrack(() => Math.max(0, SOUNDS.findIndex(([, symbol]) => symbol === current)));
-		untrack(() => shape(SOUNDS[k][1]));
+		let k = untrack(() => Math.max(0, SOUNDS.findIndex(([label]) => label === current)));
+		untrack(() => shape(SOUNDS[k]));
 		const timer = setInterval(() => {
 			k = (k + 1) % SOUNDS.length;
-			shape(SOUNDS[k][1]);
+			shape(SOUNDS[k]);
 		}, 900);
 		return () => clearInterval(timer);
 	});
@@ -157,13 +168,13 @@
 <section aria-labelledby="shape-heading">
 	<h2 id="shape-heading">Shape a sound</h2>
 	<div class="sounds">
-		{#each SOUNDS as [label, symbol] (symbol)}
+		{#each SOUNDS as sound (sound[0])}
 			<button
-				class:on={current === symbol}
-				aria-pressed={current === symbol}
-				onclick={() => shape(symbol)}
+				class:on={current === sound[0]}
+				aria-pressed={current === sound[0]}
+				onclick={() => shape(sound)}
 				disabled={!voice.awake}
-				title={symbol}>{label}</button
+				title={sound.slice(1).join(' → ')}>{sound[0]}</button
 			>
 		{/each}
 	</div>
