@@ -1,0 +1,29 @@
+[package]
+name                 = "synthie-trombone-cli"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+description          = "Pink Trombone in the terminal: play a vocal tract with keyboard and mouse, or type text and hear it spoken"
+repository.workspace = true
+license.workspace = true
+# Unpublishable until synthie-ui is on crates.io; `cargo install --path crates/synthie-trombone-cli`.
+publish              = false
+
+[[bin]]
+name = "synthie-trombone"
+path = "src/main.rs"
+# The library crate of the same name owns the `synthie_trombone` docs.
+doc  = false
+
+[dependencies]
+anyhow            = { workspace = true }
+cpal              = { workspace = true }
+crossbeam-channel = { workspace = true }
+crossterm         = { workspace = true }
+ratatui           = { workspace = true }
+synthie           = { workspace = true }
+synthie-trombone  = { path = "../synthie-trombone" }
+synthie-ui        = { workspace = true }
+
+[lints]
+workspace = true

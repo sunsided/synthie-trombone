@@ -1,0 +1,48 @@
+[package]
+name                 = "synthie-trombone"
+version.workspace    = true
+edition.workspace    = true
+authors              = [
+    "Markus Mayer <widemeadows@gmail.com>",
+    "Neil Thapen (original Pink Trombone)",
+]
+description          = "Allocation-free, sample-rate independent Pink Trombone vocal tract synthesizer with phonemes and text-to-speech, made for synthie"
+repository.workspace = true
+license.workspace = true
+readme               = "README.md"
+rust-version         = "1.88"
+keywords             = ["synthesizer", "speech", "vocal-tract", "waveguide", "audio"]
+categories           = ["multimedia::audio", "simulation", "no-std"]
+
+[features]
+default = ["std"]
+## Native `std` float math. Without it, enable `libm` for a `no_std` build.
+std     = ["alloc"]
+## `libm` float math for `no_std` targets.
+libm    = ["dep:libm"]
+## Text-to-speech front end ([`speech`]): needs an allocator to compile text.
+alloc   = []
+## `Serialize`/`Deserialize` for `VoiceSettings`, `Preset` and `Prosody`.
+serde   = ["dep:serde"]
+
+[dependencies]
+libm  = { workspace = true, optional = true }
+serde = { version = "1", default-features = false, features = ["derive"], optional = true }
+
+[[example]]
+name = "vowels"
+path = "examples/vowels.rs"
+required-features = ["std"]
+
+[[example]]
+name = "voices"
+path = "examples/voices.rs"
+required-features = ["std"]
+
+[[example]]
+name = "say"
+path = "examples/say.rs"
+required-features = ["std"]
+
+[lints]
+workspace = true

@@ -1,0 +1,26 @@
+[workspace]
+members  = ["crates/synthie-trombone", "crates/synthie-trombone-cli"]
+resolver = "3"
+
+[workspace.package]
+version    = "0.1.0"
+edition    = "2024"
+authors    = ["Markus Mayer <widemeadows@gmail.com>"]
+license    = "EUPL-1.2"
+repository = "https://github.com/sunsided/synthie-trombone"
+
+[workspace.dependencies]
+anyhow            = "1"
+cpal              = "0.18"
+crossbeam-channel = "0.5"
+crossterm         = "0.29"
+libm              = "0.2"
+ratatui           = { version = "0.30.2", default-features = false, features = ["std", "underline-color", "all-widgets", "macros", "layout-cache", "crossterm"] }
+synthie           = { version = "0.8", default-features = false, features = ["std"] }
+synthie-ui        = { git = "https://github.com/sunsided/synth", default-features = false, features = ["crossterm"] }
+
+[workspace.lints.clippy]
+pedantic = "warn"
+
+[profile.dev.package.synthie-trombone]
+opt-level = 2
