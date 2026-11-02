@@ -414,7 +414,11 @@ mod tests {
         e.render(&mut long);
         assert_eq!(e.speaking_index(), -1);
         e.render(&mut buf);
-        assert!(e.status()[0] > 0.9, "drone voices again after speaking: {}", e.status()[0]);
+        assert!(
+            e.status()[0] > 0.9,
+            "drone voices again after speaking: {}",
+            e.status()[0]
+        );
     }
 
     #[test]
