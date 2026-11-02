@@ -100,11 +100,14 @@ pub enum Preset {
     Robot,
     /// No voicing, only breath.
     Whisper,
+    /// A computer singing: bright, pressed, perfectly steady pitch, no
+    /// vibrato. Made for [`sing`](crate::sing) with hard pitch steps.
+    Android,
 }
 
 impl Preset {
     /// Every preset.
-    pub const ALL: [Preset; 8] = [
+    pub const ALL: [Preset; 9] = [
         Preset::Deep,
         Preset::Bright,
         Preset::Child,
@@ -113,6 +116,7 @@ impl Preset {
         Preset::Critter,
         Preset::Robot,
         Preset::Whisper,
+        Preset::Android,
     ];
 
     /// Lowercase name, e.g. `"critter"`.
@@ -127,6 +131,7 @@ impl Preset {
             Preset::Critter => "critter",
             Preset::Robot => "robot",
             Preset::Whisper => "whisper",
+            Preset::Android => "android",
         }
     }
 
@@ -218,6 +223,17 @@ impl Preset {
                 vibrato_rate: 0.0,
                 jitter: 0.0,
                 ..base
+            },
+            Preset::Android => VoiceSettings {
+                pitch: 220.0,
+                tract_length: 0.84,
+                tenseness: 0.8,
+                expressiveness: 0.2,
+                rate: 1.0,
+                vibrato: 0.0,
+                vibrato_rate: 0.0,
+                jitter: 0.0,
+                nasality: 0.06,
             },
             Preset::Whisper => VoiceSettings {
                 pitch: 140.0,

@@ -1,14 +1,16 @@
-//! `trombone`: play a Pink Trombone vocal tract in the terminal, or type
-//! text and hear it spoken.
+//! `synthie-trombone`: play a Pink Trombone vocal tract in the terminal,
+//! type text and hear it spoken, or sing the melody of a MIDI file.
 
 mod app;
 mod audio;
+mod sing;
 mod ui;
 
 #[cfg(test)]
 mod screenshots;
 
 use anyhow::Result;
+use clap::{Parser, Subcommand};
 use crossterm::{
     event::{
         self, DisableMouseCapture, EnableMouseCapture, Event, KeyboardEnhancementFlags,
@@ -23,7 +25,28 @@ use crossterm::{
 use ratatui::{Terminal, backend::CrosstermBackend};
 use std::{io, panic, time::Duration};
 
+/// Pink Trombone in the terminal: play a vocal tract, or have it speak and sing.
+#[derive(Debug, Parser)]
+#[command(name = "synthie-trombone", version, about)]
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Command>,
+}
+
+#[derive(Debug, Subcommand)]
+enum Command {
+    /// Sing the melody of a MIDI file into a WAV file.
+    Sing(sing::SingArgs),
+}
+
 fn main() -> Result<()> {
+    match Cli::parse().command {
+        Some(Command::Sing(args)) => sing::run(&args),
+        None => tui(),
+    }
+}
+
+fn tui() -> Result<()> {
     let original_hook = panic::take_hook();
     panic::set_hook(Box::new(move |info| {
         let _ = restore();
