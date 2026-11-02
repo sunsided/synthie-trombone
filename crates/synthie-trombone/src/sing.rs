@@ -158,20 +158,23 @@ pub fn align_lines(notes: &[SungNote], lyrics: &str, gap: f64) -> Vec<SungNote> 
             anchor = time.parse::<f64>().ok();
             line = words.trim();
         }
-        // Where this phrase starts.
+        // Where this phrase starts: at its anchor; else at the first pause
+        // of at least `gap` within a few seconds of the previous line (fills
+        // in between stay silent); else right after the previous line.
         let start = if let Some(t) = anchor {
             notes.iter().position(|n| n.start >= t - 0.05)
         } else if let Some(end) = last_end {
-            (next..notes.len()).find(|&j| {
-                let prev_end = if j == 0 {
-                    end
-                } else {
-                    (notes[j - 1].start + notes[j - 1].duration).max(end)
-                };
-                notes[j].start - prev_end >= gap
-                    || (j > 0
-                        && notes[j].start - (notes[j - 1].start + notes[j - 1].duration) >= gap)
-            })
+            (next..notes.len())
+                .take_while(|&j| notes[j].start < end + 6.0)
+                .find(|&j| {
+                    let before = if j == 0 {
+                        end
+                    } else {
+                        notes[j - 1].start + notes[j - 1].duration
+                    };
+                    notes[j].start - before.max(end) >= gap
+                })
+                .or(Some(next))
         } else {
             Some(next)
         };
@@ -413,12 +416,25 @@ struct Plan {
 
 /// Compile a melody into an articulation track sung with `voice`.
 #[must_use]
+pub fn compile(notes: &[SungNote], voice: &VoiceSettings, options: &SingOptions) -> Utterance {
+    compile_timed(notes, voice, options).0
+}
+
+/// [`compile`], also returning where note time zero lands in the
+/// utterance: a note starting at `t` seconds (before tempo scaling) begins
+/// at `t / options.tempo + offset` seconds into the rendered audio. Use it to
+/// play an accompaniment in step with the voice.
+#[must_use]
 #[allow(
     clippy::too_many_lines,
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss
 )]
-pub fn compile(notes: &[SungNote], voice: &VoiceSettings, options: &SingOptions) -> Utterance {
+pub fn compile_timed(
+    notes: &[SungNote],
+    voice: &VoiceSettings,
+    options: &SingOptions,
+) -> (Utterance, f64) {
     let tempo = f64::from(options.tempo.clamp(0.1, 10.0));
     let scaled: Vec<SungNote> = notes
         .iter()
@@ -431,7 +447,7 @@ pub fn compile(notes: &[SungNote], voice: &VoiceSettings, options: &SingOptions)
         .collect();
     let sylls = syllables(&scaled);
     if sylls.is_empty() {
-        return Utterance::default();
+        return (Utterance::default(), f64::from(options.lead_in));
     }
 
     let hz = |key: f32| crate::midi_to_hz(key);
@@ -682,7 +698,7 @@ pub fn compile(notes: &[SungNote], voice: &VoiceSettings, options: &SingOptions)
         false,
         (last_hz, last_hz),
     );
-    Utterance::from_segments(segments)
+    (Utterance::from_segments(segments), offset)
 }
 
 #[cfg(test)]
@@ -810,6 +826,13 @@ mod tests {
             vec![0.0, 0.3, 0.6, 2.0, 2.3],
             "the fill stays silent"
         );
+
+        // No pause to find: the next line follows right after the last.
+        let tight: Vec<SungNote> = (0..6)
+            .map(|i| note(f64::from(i) * 0.3, 0.3, 60.0, ""))
+            .collect();
+        let sung = align_lines(&tight, "one two\nthree four\n", 0.3);
+        assert_eq!(sung.len(), 4, "the second line is still sung");
 
         // `@` anchors a line; `*` skips a note.
         let sung = align_lines(&notes, "one * three\n@2.3 five\n", 0.3);
