@@ -203,7 +203,7 @@ __metadata:
   resolution: "@sunsided/synthie-trombone-web@workspace:."
   dependencies:
     "@fontsource-variable/bricolage-grotesque": "npm:^5.2.0"
-    "@sveltejs/adapter-static": "npm:^3.0.10"
+    "@sveltejs/adapter-static": "npm:^4.0.0"
     "@sveltejs/kit": "npm:^3.0.0"
     "@sveltejs/vite-plugin-svelte": "npm:^7.2.0"
     "@types/node": "npm:^26"
@@ -223,12 +223,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sveltejs/adapter-static@npm:^3.0.10":
-  version: 3.0.10
-  resolution: "@sveltejs/adapter-static@npm:3.0.10"
+"@sveltejs/adapter-static@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "@sveltejs/adapter-static@npm:4.0.0"
   peerDependencies:
-    "@sveltejs/kit": ^2.0.0
-  checksum: 10c0/14a8c05e1ef2bd07fe0fbc709f13f13cdd17b8f7940ccae61f6aa1b2c1a32e8067c2a36b3a80b10558a52fe2c8b07f581b848af2fe123c41b79a5fc4ec8d3140
+    "@sveltejs/kit": ^3.0.0-next.0
+  checksum: 10c0/fef890b413f1e2014234fb42117d502e6ed0ab17fa58affe655bc0e613cba00ac3d77fb7febf60161415c26059316d260406538879b0406a0dc5db470604e11c
   languageName: node
   linkType: hard
 
