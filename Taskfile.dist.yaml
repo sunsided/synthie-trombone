@@ -186,3 +186,48 @@ tasks:
           --force-device-scale-factor=2 --window-size=1200,780
           --screenshot={{.ROOT_DIR}}/docs/{{.ITEM}}.png file://{{.FRAMES}}/{{.ITEM}}.html 2>/dev/null
           && convert docs/{{.ITEM}}.png -bordercolor black -border 1 -fuzz 1% -trim +repage docs/{{.ITEM}}.png
+
+  web:wasm:
+    desc: Build the wasm engine for the web app into web/src/lib/wasm/pkg
+    preconditions:
+      - sh: command -v wasm-pack
+        msg: "wasm-pack not found — install via cargo install wasm-pack --locked"
+    sources:
+      - crates/synthie-trombone/src/**/*.rs
+      - crates/synthie-trombone-wasm/src/**/*.rs
+      - crates/synthie-trombone-wasm/Cargo.toml
+    generates:
+      - web/src/lib/wasm/pkg/engine_bg.wasm
+    cmds:
+      - wasm-pack build crates/synthie-trombone-wasm --release --target web --out-dir ../../web/src/lib/wasm/pkg --out-name engine --no-pack
+
+  web:install:
+    desc: Install the web app's dependencies (Yarn via corepack)
+    dir: web
+    sources:
+      - package.json
+      - yarn.lock
+    cmds:
+      - corepack enable
+      - yarn install --immutable
+
+  web:dev:
+    desc: Run the web app locally with hot reload (http://localhost:5173)
+    deps: [web:wasm, web:install]
+    dir: web
+    cmds:
+      - yarn dev {{.CLI_ARGS}}
+
+  web:check:
+    desc: Type-check the web app (svelte-check)
+    deps: [web:wasm, web:install]
+    dir: web
+    cmds:
+      - yarn check
+
+  web:build:
+    desc: Build the static site into web/build (BASE_PATH=/synthie-trombone for GitHub Pages)
+    deps: [web:wasm, web:install]
+    dir: web
+    cmds:
+      - yarn build

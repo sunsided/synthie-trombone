@@ -1733,6 +1733,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "synthie-trombone-wasm"
+version = "0.1.0"
+dependencies = [
+ "synthie",
+ "synthie-trombone",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "synthie-ui"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

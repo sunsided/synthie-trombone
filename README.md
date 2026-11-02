@@ -7,11 +7,18 @@ somewhere, and out comes something between a vowel and a very confused
 trombone. You can play it in your terminal, have it read your text aloud, or
 give the characters in your game a voice.
 
+**Play it in your browser: https://sunsided.github.io/synthie-trombone/**
+
 ![Singing an "ah" with the critter voice, a finger on the tongue tip](docs/singing.png)
 
 ![The bright voice mid-sentence, about to close the lips for the "m" in "am"](docs/speaking.png)
 
 ## Trying it out
+
+The browser version runs the same Rust engine through WebAssembly in an
+AudioWorklet; `task web:dev` starts it locally with hot reload (it needs
+`wasm-pack` and Node with corepack). Everything below is about the
+terminal app and the library.
 
 You'll need a Rust toolchain (1.88 or newer for the library) and, on Linux,
 the ALSA headers for audio output (`libasound2-dev` on Debian and Ubuntu).

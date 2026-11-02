@@ -1,0 +1,23 @@
+[package]
+name                 = "synthie-trombone-wasm"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+description          = "WebAssembly engine for the synthie-trombone web app (AudioWorklet)"
+repository.workspace = true
+license.workspace    = true
+publish              = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+synthie          = { workspace = true }
+synthie-trombone = { path = "../synthie-trombone" }
+wasm-bindgen     = "0.2"
+
+[lints]
+workspace = true
+
+[package.metadata.release]
+release = false
