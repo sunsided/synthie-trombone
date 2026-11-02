@@ -312,7 +312,7 @@ fn syllables(notes: &[SungNote]) -> Vec<Syllable> {
         } else {
             trimmed.ends_with('-')
         };
-        let letters = trimmed.trim_end_matches('-').to_string();
+        let letters = String::from(trimmed.trim_end_matches('-'));
         words
             .last_mut()
             .expect("pushed above")

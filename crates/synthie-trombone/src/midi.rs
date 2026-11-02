@@ -364,7 +364,8 @@ pub fn parse(data: &[u8]) -> Result<MidiFile, MidiError> {
 pub fn write(notes: &[(f64, f64, u8, Option<&str>)]) -> Vec<u8> {
     // 480 ticks per quarter at 120 bpm: 960 ticks per second.
     const TICKS_PER_SECOND: f64 = 960.0;
-    let tick = |s: f64| (s.max(0.0) * TICKS_PER_SECOND).round() as u32;
+    // Round half up by hand: `f64::round` is not in `core`.
+    let tick = |s: f64| (s.max(0.0) * TICKS_PER_SECOND + 0.5) as u32;
     // (tick, order, bytes): note-offs before note-ons at the same tick.
     let mut events: Vec<(u32, u8, Vec<u8>)> = Vec::new();
     for &(start, duration, key, lyric) in notes {
