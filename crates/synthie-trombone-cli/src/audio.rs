@@ -120,6 +120,8 @@ struct Instrument {
     tenseness: f32,
     velum: f32,
     wobble: bool,
+    /// Speech turns the drone off while it talks; restored afterwards.
+    drone: bool,
 }
 
 struct Engine {
@@ -166,7 +168,12 @@ impl Engine {
                 self.instrument.wobble = w;
                 v.set_wobble(w);
             }
-            Cmd::Drone(on) => v.set_always_voice(on),
+            Cmd::Drone(on) => {
+                self.instrument.drone = on;
+                if !self.speaker.is_speaking() {
+                    v.set_always_voice(on);
+                }
+            }
             Cmd::Reverb(mix) => self.reverb_mix = mix,
             Cmd::Voice(settings) => {
                 settings.apply(v);
@@ -198,6 +205,7 @@ impl Engine {
         v.set_wobble(self.instrument.wobble);
         v.set_tenseness(self.instrument.tenseness);
         v.set_velum(self.instrument.velum);
+        v.set_always_voice(self.instrument.drone);
     }
 
     fn render(&mut self, data: &mut [f32], channels: usize) {
@@ -271,6 +279,7 @@ pub fn start() -> Result<(cpal::Stream, Link)> {
             tenseness: 0.6,
             velum: 0.0,
             wobble: false,
+            drone: false,
         },
         was_speaking: false,
         scope: Scope::default(),
