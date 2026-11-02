@@ -199,9 +199,51 @@
 		border-radius: 50%;
 		color: var(--cartilage);
 		transition: color 120ms;
+		isolation: isolate;
 	}
 
-	.repo:hover {
+	/* Rays in synthie's rainbow, radiating around the mark: a faint glimmer
+	   at rest, bright and slowly turning on hover or focus. */
+	.repo::before {
+		content: '';
+		position: absolute;
+		inset: -1rem;
+		z-index: -1;
+		border-radius: 50%;
+		background: repeating-conic-gradient(
+			from 0deg,
+			#00f0ff 0deg 3deg,
+			transparent 3deg 15deg,
+			#a85cff 15deg 18deg,
+			transparent 18deg 30deg,
+			#ff2eaa 30deg 33deg,
+			transparent 33deg 45deg,
+			#ff8c28 45deg 48deg,
+			transparent 48deg 60deg
+		);
+		mask: radial-gradient(circle, transparent 34%, #000 40%, #000 52%, transparent 70%);
+		opacity: 0.18;
+		transform: scale(0.8);
+		transition:
+			opacity 200ms ease-out,
+			transform 300ms ease-out;
+	}
+
+	.repo:hover::before,
+	.repo:focus-visible::before {
+		opacity: 1;
+		transform: scale(1);
+		animation: rays 8s linear infinite;
+	}
+
+	@keyframes rays {
+		to {
+			rotate: 360deg;
+		}
+	}
+
+	.repo:hover,
+	.repo:focus-visible {
 		color: var(--bone);
 	}
 
