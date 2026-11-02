@@ -144,7 +144,7 @@ tasks:
       - cargo install --locked --path crates/synthie-trombone-cli
 
   say:
-    desc: 'Speak text into say.wav (task say -- --voice woman "Hello there!")'
+    desc: 'Speak text into say.wav (task say -- --voice bright "Hello there!")'
     cmds:
       - cargo run -p synthie-trombone --example say --release -- {{.CLI_ARGS}}
 

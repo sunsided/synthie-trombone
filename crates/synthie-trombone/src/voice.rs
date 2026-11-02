@@ -219,8 +219,8 @@ impl Trombone {
         self.glottis.release = DEFAULT_RELEASE;
     }
 
-    /// Vocal tract length relative to an adult male (`1.0`, about 17 cm).
-    /// About `0.85` for an adult woman, `0.7` for a child; clamped to
+    /// Vocal tract length relative to the model's native tract (`1.0`,
+    /// about 17 cm); `0.7` is a small speaker such as a child. Clamped to
     /// `0.5‥1.6`. Shorter tracts raise all formants. CPU cost scales with
     /// `1 / length`.
     pub fn set_tract_length(&mut self, length: f32) {
@@ -548,7 +548,7 @@ mod tests {
         // Formants scale with 1 / length: about +43 % for 0.7.
         assert!(
             c1 > m1 * 1.3 && c2 > m2 * 1.3,
-            "man {m1}/{m2}, child {c1}/{c2}"
+            "native {m1}/{m2}, short {c1}/{c2}"
         );
     }
 

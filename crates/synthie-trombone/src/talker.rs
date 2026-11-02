@@ -175,7 +175,7 @@ pub fn normalize(samples: &mut [f32], peak: f32) {
     }
 }
 
-/// Render `text` in one go: `bake(text, Preset::Woman, 44_100.0)`.
+/// Render `text` in one go: `bake(text, Preset::Bright, 44_100.0)`.
 #[must_use]
 pub fn bake(text: &str, voice: impl Into<VoiceSettings>, sample_rate: f32) -> Vec<f32> {
     Talker::new(sample_rate, voice).bake(text)
@@ -210,7 +210,7 @@ mod tests {
 
     #[test]
     fn bake_is_repeatable() {
-        let mut t = Talker::new(16_000.0, Preset::Woman);
+        let mut t = Talker::new(16_000.0, Preset::Bright);
         let a = t.bake("Again.");
         let b = t.bake("Again.");
         assert_eq!(a.len(), b.len());

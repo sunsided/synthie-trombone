@@ -34,7 +34,7 @@ whatever plays your audio:
 ```rust
 use synthie_trombone::{Preset, Talker, VoiceSettings, normalize};
 
-// Built-in voices: Man, Woman, Child, Elder, Giant, Critter, Robot, Whisper.
+// Built-in voices: Deep, Bright, Child, Elder, Giant, Critter, Robot, Whisper.
 let mut shopkeeper = Talker::new(44_100.0, Preset::Elder);
 let mut line = shopkeeper.bake("Welcome, traveller!");
 normalize(&mut line, 0.9); // mono f32 at 44.1 kHz, ready to play
@@ -50,9 +50,10 @@ let squeak = goblin.bake("Shiny!");
 # assert!(!squeak.is_empty());
 ```
 
-Voices differ in more than pitch. The *vocal tract length* sets every
-formant (a woman's tract is ~14 % shorter than a man's, a child's ~30 %),
-and tenseness, jitter, vibrato, nasality, speaking rate and intonation range
+Pitch and vocal tract length vary independently from person to person:
+raising only the pitch sounds like the same speaker reaching higher, while a
+shorter tract shifts every resonance and sounds like a smaller speaker.
+Tenseness, jitter, vibrato, nasality, speaking rate and intonation range
 complete the character. With the `serde` feature, `VoiceSettings` can live
 in your game's data files.
 
@@ -83,7 +84,7 @@ for s in &mut buf {
 ## Examples
 
 ```sh
-cargo run -p synthie-trombone --example say --release -- --voice woman "Can you hear me?"  # → say.wav
+cargo run -p synthie-trombone --example say --release -- --voice bright "Can you hear me?"  # → say.wav
 cargo run -p synthie-trombone --example voices --release                       # → voices/*.wav
 cargo run -p synthie-trombone --example vowels --release                       # → vowels.wav
 cargo run -p synthie-trombone --example formants --release                     # F1–F3 table

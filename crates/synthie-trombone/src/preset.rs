@@ -12,10 +12,11 @@ use crate::Trombone;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct VoiceSettings {
-    /// Speaking pitch in Hz (about 100 for men, 200 for women).
+    /// Speaking pitch in Hz (the presets span 62 to 360).
     pub pitch: f32,
-    /// Vocal tract length relative to an adult male; shorter raises every
-    /// formant (`0.85` woman, `0.7` child). `0.5‥1.6`.
+    /// Vocal tract length relative to the model's native tract (about
+    /// 17 cm); shorter raises every formant and sounds like a smaller
+    /// speaker (`0.86` bright, `0.72` child). `0.5‥1.6`.
     pub tract_length: f32,
     /// Glottal tenseness: `0` whisper, `0.4` breathy, `0.65` modal, `0.9`
     /// pressed.
@@ -36,7 +37,7 @@ pub struct VoiceSettings {
 
 impl Default for VoiceSettings {
     fn default() -> Self {
-        Preset::Man.settings()
+        Preset::Deep.settings()
     }
 }
 
@@ -83,10 +84,10 @@ impl VoiceSettings {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Preset {
-    /// Adult male, the model's native voice.
-    Man,
-    /// Adult female: higher pitch, shorter tract, livelier.
-    Woman,
+    /// Low and full: the model's native tract at about 105 Hz.
+    Deep,
+    /// Higher pitch, shorter tract, livelier intonation.
+    Bright,
     /// Child: high pitch, short tract.
     Child,
     /// Old: breathy, slow, with a tremor.
@@ -104,8 +105,8 @@ pub enum Preset {
 impl Preset {
     /// Every preset.
     pub const ALL: [Preset; 8] = [
-        Preset::Man,
-        Preset::Woman,
+        Preset::Deep,
+        Preset::Bright,
         Preset::Child,
         Preset::Elder,
         Preset::Giant,
@@ -118,8 +119,8 @@ impl Preset {
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
-            Preset::Man => "man",
-            Preset::Woman => "woman",
+            Preset::Deep => "deep",
+            Preset::Bright => "bright",
             Preset::Child => "child",
             Preset::Elder => "elder",
             Preset::Giant => "giant",
@@ -152,8 +153,8 @@ impl Preset {
             nasality: 0.0,
         };
         match self {
-            Preset::Man => base,
-            Preset::Woman => VoiceSettings {
+            Preset::Deep => base,
+            Preset::Bright => VoiceSettings {
                 pitch: 210.0,
                 tract_length: 0.86,
                 tenseness: 0.6,

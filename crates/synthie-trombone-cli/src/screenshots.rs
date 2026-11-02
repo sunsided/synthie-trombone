@@ -124,7 +124,7 @@ fn shoot(name: &str, app: &mut App) {
 fn singing() {
     let (mut app, _rx) = app();
     for _ in 0..5 {
-        press(&mut app, 'v'); // man → critter
+        press(&mut app, 'v'); // deep → critter
     }
     press(&mut app, '5'); // AA
     press(&mut app, 'g');
@@ -144,10 +144,10 @@ fn singing() {
     shoot("singing", &mut app);
 }
 
-/// Mid-sentence: the woman voice saying a line, caught on the "m".
+/// Mid-sentence: the bright voice saying a line, caught on the "m".
 fn speaking() {
     let (mut app, _rx) = app();
-    press(&mut app, 'v'); // woman
+    press(&mut app, 'v'); // bright
     app.mode = Mode::Type;
     app.text = "Can you hear me?".into();
 

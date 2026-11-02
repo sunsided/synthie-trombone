@@ -19,7 +19,7 @@ use synthie_trombone::{Preset, Talker, normalize};
 
 fn main() -> std::io::Result<()> {
     const SR: u32 = 48_000;
-    let mut settings = Preset::Man.settings();
+    let mut settings = Preset::Deep.settings();
     let mut text = Vec::new();
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {

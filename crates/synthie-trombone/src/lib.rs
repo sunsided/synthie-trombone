@@ -20,7 +20,7 @@
 //!   up to [`MAX_CONSTRICTIONS`] simultaneous constrictions, an explicit
 //!   velum.
 //! - **Phonemes:** an ARPAbet [`Phoneme`] set with articulations.
-//! - **Voices:** [`Preset`]s (man, woman, child, elder, giant, critter,
+//! - **Voices:** [`Preset`]s (deep, bright, child, elder, giant, critter,
 //!   robot, whisper) built from pitch, *vocal tract length*, tenseness,
 //!   jitter and intonation; tune your own with [`VoiceSettings`].
 //! - **[`Talker`]** (`alloc`): tune once, then [`bake`](Talker::bake)
