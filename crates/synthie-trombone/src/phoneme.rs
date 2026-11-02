@@ -226,7 +226,8 @@ impl Phoneme {
         self.articulation().voiced
     }
 
-    /// Target tract configuration. Diphthongs return their first target.
+    /// Target tract configuration. Diphthongs return the shape they start
+    /// from (for `OW` a pure /o/, which no ARPAbet monophthong covers).
     #[must_use]
     #[allow(clippy::match_same_arms)] // a lookup table
     pub const fn articulation(self) -> Articulation {
@@ -248,7 +249,8 @@ impl Phoneme {
             P::Ay => Phoneme::Aa.articulation(),
             P::Aw => Phoneme::Ae.articulation(),
             P::Ey => Phoneme::Eh.articulation(),
-            P::Ow => Phoneme::Ao.articulation(),
+            // /o/, fitted to Hillenbrand et al. (1995): the "oh" in "go".
+            P::Ow => Articulation::vowel(16.0, 2.25).rounded(0.95),
             P::Oy => Phoneme::Ao.articulation(),
 
             P::P => Articulation::consonant(LIPS, SHUT, false),

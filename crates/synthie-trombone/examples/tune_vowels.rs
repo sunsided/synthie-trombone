@@ -1,8 +1,10 @@
 //! Grid-search tongue position, height and lip rounding for each vowel
-//! against Peterson & Barney (1952) adult male formant averages.
+//! against Peterson & Barney (1952) adult male formant averages, plus /o/
+//! from Hillenbrand et al. (1995), which Peterson & Barney did not record.
 //!
 //! ```sh
-//! cargo run -p synthie-trombone --example tune_vowels --release
+//! cargo run -p synthie-trombone --example tune_vowels --release            # all
+//! cargo run -p synthie-trombone --example tune_vowels --release -- OH AA   # some
 //! ```
 
 #![allow(
@@ -29,6 +31,8 @@ const TARGETS: &[(&str, f32, f32)] = &[
     ("AO", 570.0, 840.0),
     ("UH", 440.0, 1020.0),
     ("UW", 300.0, 870.0),
+    // Hillenbrand et al. (1995), men: the /o/ that starts "go".
+    ("OH", 497.0, 910.0),
 ];
 
 fn measure(index: f32, diameter: f32, lips: Option<f32>) -> Option<(f32, f32)> {
@@ -48,7 +52,11 @@ fn measure(index: f32, diameter: f32, lips: Option<f32>) -> Option<(f32, f32)> {
 
 fn main() {
     let lips = [None, Some(1.3), Some(1.1), Some(0.95), Some(0.8)];
+    let only: Vec<String> = std::env::args().skip(1).map(|a| a.to_uppercase()).collect();
     for &(name, t1, t2) in TARGETS {
+        if !only.is_empty() && !only.iter().any(|o| o == name) {
+            continue;
+        }
         let mut best = (f32::INFINITY, 0.0, 0.0, None, 0.0, 0.0);
         for i in 0..=34 {
             let index = 12.0 + i as f32 * 0.5;

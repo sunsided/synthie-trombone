@@ -542,6 +542,17 @@ mod tests {
     }
 
     #[test]
+    fn oh_is_a_proper_o() {
+        // Hillenbrand et al. (1995), men: /o/ at 497/910 Hz.
+        let (f1, f2) = formants(Phoneme::Ow, 1.0);
+        assert!((440.0..560.0).contains(&f1), "F1 {f1}");
+        assert!((820.0..1000.0).contains(&f2), "F2 {f2}");
+        // Closer and more rounded than "aw".
+        let (a1, _) = formants(Phoneme::Ao, 1.0);
+        assert!(f1 < a1 - 40.0, "oh {f1} vs aw {a1}");
+    }
+
+    #[test]
     fn shorter_tract_raises_formants() {
         let (m1, m2) = formants(Phoneme::Aa, 1.0);
         let (c1, c2) = formants(Phoneme::Aa, 0.7);
