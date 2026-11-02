@@ -141,19 +141,27 @@ pub fn run(args: &SingArgs) -> Result<()> {
             .context("the file has no notes")?,
     };
 
-    let melody_options = sing::MelodyOptions {
-        min_key: args.min_key,
+    let lyrics = match &args.lyrics {
+        Some(path) => Some(
+            std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?,
+        ),
+        None => None,
     };
-    let mut notes = sing::melody_with(&file.tracks[index], &melody_options);
-    notes.retain(|n| n.start + 1e-6 >= args.from && args.until.is_none_or(|u| n.start < u));
+    let in_range =
+        |n: &sing::SungNote| n.start + 1e-6 >= args.from && args.until.is_none_or(|u| n.start < u);
+    let track = &file.tracks[index];
+
+    let min_key = args
+        .min_key
+        .or_else(|| voice_floor(track, lyrics.as_deref()?, &in_range, args.gap));
+    let mut notes = sing::melody_with(track, &sing::MelodyOptions { min_key });
+    notes.retain(in_range);
     if args.notes {
         print_notes(&notes);
         return Ok(());
     }
-    if let Some(path) = &args.lyrics {
-        let text =
-            std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
-        notes = sing::align_lines(&notes, &text, args.gap);
+    if let Some(text) = &lyrics {
+        notes = sing::align_lines(&notes, text, args.gap);
     }
     if notes.is_empty() {
         bail!(
@@ -346,6 +354,33 @@ impl Band {
             synth.process_block(&due, block, 1);
         }
     }
+}
+
+/// The bottom of the voice's register, from the first lyrics line: its
+/// lowest note minus a fifth, so later phrases may go a little lower. Notes
+/// below it are the accompaniment's top line where the singer rests, and go
+/// to the band.
+fn voice_floor(
+    track: &midi::Track,
+    lyrics: &str,
+    in_range: &dyn Fn(&sing::SungNote) -> bool,
+    gap: f64,
+) -> Option<u8> {
+    let first_line = lyrics.lines().find(|l| !l.trim().is_empty())?;
+    let mut notes = sing::melody(track);
+    notes.retain(|n| in_range(n));
+    let lowest = sing::align_lines(&notes, first_line, gap)
+        .iter()
+        .map(|n| n.key)
+        .fold(f32::INFINITY, f32::min);
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let floor = lowest
+        .is_finite()
+        .then(|| (lowest - 7.0).clamp(0.0, 127.0) as u8);
+    if let Some(k) = floor {
+        println!("voice register from key {k} up (set --min-key to change)");
+    }
+    floor
 }
 
 /// Write the WAV file and/or sing aloud, as asked.
