@@ -532,6 +532,20 @@ fn export(path: &PathBuf, notes: &[sing::SungNote]) -> Result<()> {
     Ok(())
 }
 
+/// Sample rates accepted for rendering, in Hz.
+const RATES: std::ops::RangeInclusive<u32> = 8_000..=192_000;
+
+fn check_rate(rate: u32) -> Result<()> {
+    if !RATES.contains(&rate) {
+        bail!(
+            "sample rate {rate} Hz is out of range ({} to {} Hz)",
+            RATES.start(),
+            RATES.end()
+        );
+    }
+    Ok(())
+}
+
 /// Longest render accepted, in seconds.
 const MAX_SECONDS: f64 = 3600.0;
 
@@ -552,6 +566,9 @@ fn render(song: &Song, rate: u32, room: f32) -> Result<Vec<f32>> {
              (narrow it with --from/--until)"
         );
     }
+    // The rate comes from --rate or the device; bound it too, so the
+    // length cap above really bounds the buffer.
+    check_rate(rate)?;
     let samples = (seconds * f64::from(rate)).ceil() as usize;
     let sr = rate as f32;
     let mut voice = Trombone::new(sr);
@@ -606,4 +623,16 @@ fn write_wav(path: &PathBuf, sample_rate: u32, samples: &[f32]) -> Result<()> {
     }
     f.flush()?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sample_rates_are_bounded() {
+        assert!(check_rate(48_000).is_ok());
+        assert!(check_rate(0).is_err());
+        assert!(check_rate(4_000_000_000).is_err());
+    }
 }

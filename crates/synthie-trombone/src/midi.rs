@@ -65,6 +65,8 @@ pub enum MidiError {
     SmpteTiming,
     /// Format 2 (independent sequences) is not supported.
     Format2,
+    /// A variable-length number runs past its four-byte limit.
+    Malformed,
 }
 
 impl fmt::Display for MidiError {
@@ -74,6 +76,9 @@ impl fmt::Display for MidiError {
             MidiError::Truncated => "the MIDI file is truncated",
             MidiError::SmpteTiming => "SMPTE time division is not supported",
             MidiError::Format2 => "MIDI format 2 is not supported",
+            MidiError::Malformed => {
+                "the MIDI file is malformed (a variable-length number is too long)"
+            }
         })
     }
 }
@@ -117,7 +122,9 @@ impl<'a> Reader<'a> {
         Ok(u32::from_be_bytes([b[0], b[1], b[2], b[3]]))
     }
 
-    /// Variable-length quantity (at most four bytes).
+    /// Variable-length quantity: at most four bytes, the last one without
+    /// the continuation bit. Anything longer is malformed, and failing here
+    /// keeps the parser from reading the rest of the event as a new one.
     fn vlq(&mut self) -> Result<u32, MidiError> {
         let mut v = 0u32;
         for _ in 0..4 {
@@ -127,7 +134,11 @@ impl<'a> Reader<'a> {
                 return Ok(v);
             }
         }
-        Ok(v)
+        Err(MidiError::Malformed)
+    }
+
+    fn rest(&self) -> &'a [u8] {
+        &self.data[self.pos.min(self.data.len())..]
     }
 }
 
@@ -195,7 +206,12 @@ pub fn parse(data: &[u8]) -> Result<MidiFile, MidiError> {
     let mut raw_tracks: Vec<(Option<String>, Vec<Raw>)> = Vec::new();
 
     while !r.done() {
-        let Ok(id) = r.bytes(4) else { break };
+        // Some writers pad files with zero bytes; any other leftover that is
+        // too short for a chunk header means the file was cut off.
+        if r.rest().iter().all(|&b| b == 0) {
+            break;
+        }
+        let id = r.bytes(4)?;
         let len = r.u32()? as usize;
         let chunk = r.bytes(len)?;
         if id != b"MTrk" {
@@ -543,6 +559,30 @@ pub(crate) mod tests {
         assert!((t.notes[2].start - 2.0).abs() < 0.002);
         assert_eq!(t.lyrics.len(), 2);
         assert_eq!(t.lyrics[1].text, "la ");
+    }
+
+    #[test]
+    fn rejects_overlong_variable_length_numbers() {
+        // A delta time whose fourth byte still carries the continuation bit.
+        let body = [0x81, 0x81, 0x81, 0x81, 0x01, 0x90, 60, 100];
+        let mut f = b"MThd".to_vec();
+        f.extend(6u32.to_be_bytes());
+        f.extend([0, 0, 0, 1, 0x01, 0xe0]);
+        f.extend(b"MTrk");
+        f.extend(u32::try_from(body.len()).unwrap().to_be_bytes());
+        f.extend(body);
+        assert_eq!(parse(&f), Err(MidiError::Malformed));
+    }
+
+    #[test]
+    fn trailing_bytes_are_padding_or_truncation() {
+        let f = smf(&[vec![(0, vec![0x90, 60, 100]), (480, vec![0x80, 60, 0])]]);
+        let mut padded = f.clone();
+        padded.extend([0, 0, 0]);
+        assert!(parse(&padded).is_ok(), "zero padding is fine");
+        let mut cut = f;
+        cut.extend(b"MT");
+        assert_eq!(parse(&cut), Err(MidiError::Truncated));
     }
 
     #[test]
