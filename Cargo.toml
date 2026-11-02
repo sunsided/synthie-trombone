@@ -17,7 +17,7 @@ crossterm         = "0.29"
 libm              = "0.2"
 ratatui           = { version = "0.30.2", default-features = false, features = ["std", "underline-color", "all-widgets", "macros", "layout-cache", "crossterm"] }
 synthie           = { version = "0.8", default-features = false, features = ["std"] }
-synthie-ui        = { git = "https://github.com/sunsided/synth", default-features = false, features = ["crossterm"] }
+synthie-ui        = { version = "0.8", default-features = false, features = ["crossterm"] }
 
 [workspace.lints.clippy]
 pedantic = "warn"

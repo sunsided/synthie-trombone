@@ -31,5 +31,6 @@ pre-release-commit-message = "Release {{version}}"
 # Only release from main.
 allow-branch = ["main"]
 
-# synthie-trombone-cli carries `publish = false` (synthie-ui is a git
-# dependency), so only the library is published.
+# Both crates are published: the library and synthie-trombone-cli, which
+# installs the `synthie-trombone` binary. cargo-release publishes them in
+# dependency order.

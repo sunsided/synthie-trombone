@@ -6,8 +6,9 @@ authors.workspace    = true
 description          = "Pink Trombone in the terminal: play a vocal tract with keyboard and mouse, or type text and hear it spoken"
 repository.workspace = true
 license.workspace = true
-# Unpublishable until synthie-ui is on crates.io; `cargo install --path crates/synthie-trombone-cli`.
-publish              = false
+readme               = "../../README.md"
+keywords             = ["synthesizer", "speech", "vocal-tract", "tui", "text-to-speech"]
+categories           = ["multimedia::audio", "command-line-utilities"]
 
 [[bin]]
 name = "synthie-trombone"
@@ -22,7 +23,7 @@ crossbeam-channel = { workspace = true }
 crossterm         = { workspace = true }
 ratatui           = { workspace = true }
 synthie           = { workspace = true }
-synthie-trombone  = { path = "../synthie-trombone" }
+synthie-trombone  = { path = "../synthie-trombone", version = "0.1.0" }
 synthie-ui        = { workspace = true }
 
 [lints]

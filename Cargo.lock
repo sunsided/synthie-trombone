@@ -1735,7 +1735,8 @@ dependencies = [
 [[package]]
 name = "synthie-ui"
 version = "0.8.0"
-source = "git+https://github.com/sunsided/synth#161861ad83404e439bf965280c1f3a73047966dd"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cbd2718e6d09a89ca6bd90dfa88899e039b5a632e984a9b6b68413cdd681b334"
 dependencies = [
  "crossbeam-channel",
  "crossterm",
