@@ -84,8 +84,8 @@ jobs:
       - name: Clippy, no_std with alloc (libm + speech)
         run: cargo clippy -p synthie-trombone --no-default-features --features libm,alloc,serde --locked -- -D warnings
 
-      - name: Clippy, wasm32 (game-toolkit's web target)
-        run: cargo clippy -p synthie-trombone --target wasm32-unknown-unknown --all-features --locked -- -D warnings
+      - name: Clippy, wasm32 (game-toolkit's web target, the web app's engine)
+        run: cargo clippy -p synthie-trombone -p synthie-trombone-wasm --target wasm32-unknown-unknown --all-features --locked -- -D warnings
 
       - name: Docs (warnings are errors)
         env:
@@ -108,3 +108,45 @@ jobs:
 
       - name: Check the library on its MSRV
         run: cargo check -p synthie-trombone --all-features --locked
+
+  web:
+    name: Web app (svelte-check, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install stable toolchain with wasm32 target
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
+        with:
+          tool: wasm-pack
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Build the wasm engine
+        run: wasm-pack build crates/synthie-trombone-wasm --release --target web --out-dir ../../web/src/lib/wasm/pkg --out-name engine --no-pack
+
+      - name: Install web dependencies
+        working-directory: web
+        run: |
+          corepack enable
+          yarn install --immutable
+
+      - name: Type-check
+        working-directory: web
+        run: yarn check
+
+      - name: Build
+        working-directory: web
+        run: yarn build

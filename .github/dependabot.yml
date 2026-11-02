@@ -25,3 +25,15 @@ updates:
       - dependencies
     commit-message:
       prefix: "CI/CD"
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    commit-message:
+      prefix: "Dependencies"

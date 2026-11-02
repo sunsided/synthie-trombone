@@ -1,0 +1,86 @@
+name: Deploy Pages
+
+# Builds the web app (wasm engine + SvelteKit) and publishes it to GitHub
+# Pages on every push to main. A newer push cancels a run still in flight,
+# so the site always ends up at the most recent push.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+permissions: {}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build site
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install stable toolchain with wasm32 target
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+
+      # No build cache on purpose: this workflow publishes what it builds.
+
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
+        with:
+          tool: wasm-pack
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Build the wasm engine
+        run: wasm-pack build crates/synthie-trombone-wasm --release --target web --out-dir ../../web/src/lib/wasm/pkg --out-name engine --no-pack
+
+      - name: Install web dependencies
+        working-directory: web
+        run: |
+          corepack enable
+          yarn install --immutable
+
+      - name: Build site
+        working-directory: web
+        env:
+          # The site is served from /<repository>.
+          BASE_PATH: /${{ github.event.repository.name }}
+        run: yarn build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: web/build
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
