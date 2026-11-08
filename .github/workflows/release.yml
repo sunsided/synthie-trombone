@@ -161,7 +161,7 @@ jobs:
           gh release create "$TAG" "${flags[@]}" dist/*
 
   publish-crate:
-    name: Publish synthie-trombone to crates.io
+    name: Publish crates to crates.io
     # After the GitHub release, so a failed release doesn't leave a published crate behind.
     needs: release
     if: github.ref_type == 'tag' && vars.PUBLISH_CRATES == 'true'
@@ -187,4 +187,5 @@ jobs:
       - name: Publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
-        run: cargo publish -p synthie-trombone --locked
+        # Library and CLI, in dependency order; the wasm crate is `publish = false`.
+        run: cargo publish --workspace --locked
