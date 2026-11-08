@@ -24,7 +24,7 @@ crossbeam-channel = { workspace = true }
 crossterm         = { workspace = true }
 ratatui           = { workspace = true }
 synthie           = { workspace = true }
-synthie-trombone  = { path = "../synthie-trombone", version = "0.1.0" }
+synthie-trombone  = { path = "../synthie-trombone", version = "0.2.0" }
 synthie-ui        = { workspace = true }
 
 [lints]
