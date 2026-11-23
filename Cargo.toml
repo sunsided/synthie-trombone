@@ -17,7 +17,7 @@ crossbeam-channel = "0.5"
 crossterm         = "0.29"
 libm              = "0.2"
 ratatui           = { version = "0.30.2", default-features = false, features = ["std", "underline-color", "all-widgets", "macros", "layout-cache", "crossterm"] }
-synthie           = { version = "0.8", default-features = false, features = ["std"] }
+synthie           = { version = "0.10", default-features = false, features = ["std"] }
 synthie-ui        = { version = "0.8", default-features = false, features = ["crossterm"] }
 
 [workspace.lints.clippy]
